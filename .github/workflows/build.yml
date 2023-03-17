@@ -1,0 +1,29 @@
+---
+name: Build
+
+on:
+  push:
+    branches: [ "master", "main" ]
+    tags: [ 'v*.*.*', 'v*.*.*-*' ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GH_PAT }}
+          file: gopass-otp
+          asset_name: gopass-otp
+          tag: ${{ github.ref }}

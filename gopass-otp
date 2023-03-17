@@ -1,0 +1,96 @@
+#!/bin/bash
+
+set -eo pipefail
+
+function check_arguments_count {
+	if [[ "$#" -le "$1" ]]; then
+		echo "You need to provide at least $1 arguments"
+		exit 1
+	fi
+}
+
+function check_bin_exists {
+	if which "$1" &>/dev/null; then
+		return
+	fi
+	echo "Binary '${1}' is not installed"
+	exit 1
+}
+
+function check_arg_regexp {
+	local regexp="$1"
+	local arg_required="$2"
+	local arg_val="$3"
+
+	# check if arg is not required and empty
+	# return from function if arg value is empty
+	if [[ "$arg_required" != "1" ]] && [[ "x$arg_val" = "x" ]]; then
+		return
+	fi
+
+	# check if arg value match regexp
+	# return from function if match
+	if [[ "$arg_val" =~ ${regexp} ]]; then
+		return
+	fi
+
+	echo "Argument '${arg_val}' no match regexp '${regexp}'."
+	exit 1
+}
+
+function check_path_regexp {
+	check_arg_regexp "^([0-9a-zA-Z_-]+\/*)+$" 1 ${1}
+}
+
+function gopass_get_key {
+	local key_path="$1"
+	if [ -z "${key_path}" ]; then
+		echo "!!! Key path is not set. Exiting"
+		exit 1
+	fi
+	printf "otp/%s/secret" ${key_path}
+}
+
+function otp_show {
+	local gopass_otp_secret_path=$(gopass_get_key ${1})
+	local need_copy="$2"
+	if [[ "${need_copy}" == "1" ]]; then
+		gopass otp -c ${gopass_otp_secret_path}
+	else
+		gopass otp ${gopass_otp_secret_path}
+	fi
+}
+
+check_bin_exists "gopass"
+
+case "$1" in
+	"show" )
+		if [[ "${2}" == "-c" || "${2}" == "--copy" ]]; then
+			check_arguments_count 1 ${@:3}
+			check_path_regexp ${3}
+			otp_show ${3} "1"
+		else
+			check_arguments_count 1 ${@:2}
+			check_path_regexp ${2}
+			otp_show ${2}
+		fi
+	;;
+
+	"add" | "create" | "edit" )
+		check_arguments_count 2 ${@:2}
+		check_path_regexp ${2}
+		echo "${3}" | gopass insert $(gopass_get_key ${2}) totp
+	;;
+
+	"delete" | "rm" | "remove" )
+		check_arguments_count 1 ${@:2}
+		check_path_regexp ${2}
+		gopass rm $(gopass_get_key ${2})
+	;;
+
+	*)
+		check_arguments_count 1 ${@}
+		check_path_regexp ${1}
+		otp_show ${1}
+	;;
+esac

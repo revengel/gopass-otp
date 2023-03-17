@@ -1,0 +1,33 @@
+#compdef gopass-otp
+#autoload
+
+_gopassotp () {
+local line state
+
+    _arguments -C \
+        "1: :->cmds" \
+        "2: :->keys" \
+        "*::arg:->args"
+
+    case "$state" in
+        cmds)
+            _values "gopass-otp command" \
+                "show[Show OTP code]" \
+                "edit[Edit otp item - edit secret]" \
+                "create[Create otp item - insert secret]" \
+                "delete[Delete OTP item]"
+        ;;
+
+        keys)
+            local -a folders
+            folders=($(gopass ls --flat | grep -e '^otp/' | grep -e '/secret$' | sed 's:/secret$::' | sed 's:^otp/::' ))
+            _describe 'commands' folders
+        ;;
+
+        args)
+        ;;
+    esac
+}
+
+compdef _gopassotp gopass-otp
+# _gsshadd "$@"
